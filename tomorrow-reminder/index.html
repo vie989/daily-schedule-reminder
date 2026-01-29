@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="明日计划">
+    <meta name="theme-color" content="#667eea">
+
+    <title>明日计划</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- iOS Icons -->
+    <link rel="apple-touch-icon" href="icons/icon-192.svg">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- 顶部导航 -->
+        <header class="header">
+            <h1 class="header-title">明日计划</h1>
+            <button id="notificationBtn" class="notification-btn" title="通知设置">
+                <span class="notification-icon">🔔</span>
+            </button>
+        </header>
+
+        <!-- 标签切换 -->
+        <div class="tab-container">
+            <button class="tab-btn active" data-tab="today">今天</button>
+            <button class="tab-btn" data-tab="tomorrow">明天</button>
+        </div>
+
+        <!-- 任务列表区域 -->
+        <main class="task-container">
+            <!-- 今日任务 -->
+            <div id="todayTasks" class="task-list active">
+                <div class="empty-state" id="todayEmpty">
+                    <span class="empty-icon">📋</span>
+                    <p>今天没有任务</p>
+                    <p class="empty-hint">昨晚添加的任务会显示在这里</p>
+                </div>
+            </div>
+
+            <!-- 明日任务 -->
+            <div id="tomorrowTasks" class="task-list">
+                <div class="empty-state" id="tomorrowEmpty">
+                    <span class="empty-icon">🌙</span>
+                    <p>明天还没有计划</p>
+                    <p class="empty-hint">点击下方按钮添加任务</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- 添加任务按钮 -->
+        <button id="addTaskBtn" class="add-task-btn">
+            <span class="add-icon">＋</span>
+            <span>添加任务</span>
+        </button>
+    </div>
+
+    <!-- 添加任务弹窗 -->
+    <div id="addTaskModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>添加任务</h2>
+                <button class="modal-close" id="closeModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="taskContent">任务内容</label>
+                    <input type="text" id="taskContent" placeholder="例如：学习英语 1小时" maxlength="100">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskTime">时间</label>
+                        <input type="time" id="taskTime" value="09:00">
+                    </div>
+                    <div class="form-group">
+                        <label>提醒</label>
+                        <label class="switch">
+                            <input type="checkbox" id="taskReminder" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="taskDate">日期</label>
+                    <select id="taskDate">
+                        <option value="today">今天</option>
+                        <option value="tomorrow" selected>明天</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" id="cancelTask">取消</button>
+                <button class="btn btn-primary" id="saveTask">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提醒弹窗 -->
+    <div id="reminderModal" class="modal reminder-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content reminder-content">
+            <div class="reminder-icon">⏰</div>
+            <h2 class="reminder-title">任务提醒</h2>
+            <p class="reminder-time" id="reminderTime"></p>
+            <p class="reminder-task" id="reminderTask"></p>
+            <button class="btn btn-primary" id="dismissReminder">知道了</button>
+        </div>
+    </div>
+
+    <!-- 通知权限弹窗 -->
+    <div id="permissionModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content permission-content">
+            <div class="permission-icon">🔔</div>
+            <h2>开启通知提醒</h2>
+            <p>开启通知后，您将在任务时间收到提醒</p>
+            <div class="permission-buttons">
+                <button class="btn btn-cancel" id="denyPermission">稍后再说</button>
+                <button class="btn btn-primary" id="allowPermission">开启通知</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/storage.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
