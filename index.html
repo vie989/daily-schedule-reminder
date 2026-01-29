@@ -731,6 +731,24 @@
                     btn.addEventListener('click', e => this.switchTab(e.target.dataset.tab));
                 });
                 document.getElementById('addTaskBtn').addEventListener('click', () => this.showAddModal());
+
+                // 修复：添加通知按钮点击事件
+                document.getElementById('notificationBtn').addEventListener('click', () => {
+                    if (!('Notification' in window)) {
+                        alert('您的设备不支持通知，或者未添加到主屏幕');
+                        return;
+                    }
+                    if (Notification.permission === 'granted') {
+                        alert('通知已开启 ✓');
+                        return;
+                    }
+                    if (Notification.permission === 'denied') {
+                        alert('通知权限已被拒绝\n请在手机系统设置中开启权限');
+                        return;
+                    }
+                    document.getElementById('permissionModal').classList.add('active');
+                });
+
                 document.getElementById('closeModal').addEventListener('click', () => this.hideAddModal());
                 document.getElementById('cancelTask').addEventListener('click', () => this.hideAddModal());
                 document.getElementById('saveTask').addEventListener('click', () => this.saveTask());
