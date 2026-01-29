@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="明日计划">
+    <meta name="theme-color" content="#667eea">
+    <title>明日计划</title>
+
+    <style>
+        /* CSS Variables */
+        :root {
+            --primary-color: #667eea;
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --background-color: #f2f2f7;
+            --card-background: #ffffff;
+            --text-primary: #1c1c1e;
+            --text-secondary: #8e8e93;
+            --text-tertiary: #c7c7cc;
+            --border-color: #e5e5ea;
+            --success-color: #34c759;
+            --danger-color: #ff3b30;
+            --safe-area-top: env(safe-area-inset-top, 20px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding-top: var(--safe-area-top);
+            padding-bottom: var(--safe-area-bottom);
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .notification-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        /* Tab Container */
+        .tab-container {
+            display: flex;
+            padding: 16px 20px;
+            gap: 12px;
+            background: var(--card-background);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: var(--background-color);
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Task Container */
+        .task-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .task-list {
+            display: none;
+        }
+
+        .task-list.active {
+            display: block;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .empty-hint {
+            font-size: 14px !important;
+            color: var(--text-tertiary) !important;
+        }
+
+        /* Task Item */
+        .task-item {
+            background: var(--card-background);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .task-item.completed {
+            opacity: 0.6;
+        }
+
+        .task-item.completed .task-content {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+
+        .task-item.current {
+            border-left: 4px solid var(--primary-color);
+            background: linear-gradient(90deg, rgba(102, 126, 234, 0.08) 0%, var(--card-background) 100%);
+        }
+
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .task-checkbox.checked {
+            background: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 14px;
+        }
+
+        .task-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-time {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .task-content {
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .task-delete {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            color: var(--text-tertiary);
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+        .task-delete:hover {
+            background: rgba(255, 59, 48, 0.1);
+            color: var(--danger-color);
+        }
+
+        /* Add Task Button */
+        .add-task-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 16px 20px;
+            padding: 16px;
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 16px;
+            color: white;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-background);
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            padding-bottom: calc(20px + var(--safe-area-bottom));
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--background-color);
+            border-radius: 50%;
+            font-size: 16px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--background-color);
+            color: var(--text-primary);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        /* Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 51px;
+            height: 31px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            transition: 0.3s;
+            border-radius: 31px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 27px;
+            width: 27px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked+.slider {
+            background: var(--success-color);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Buttons */
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-cancel {
+            background: var(--background-color);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        /* Reminder Modal */
+        .reminder-content {
+            text-align: center;
+            border-radius: 20px;
+            margin: 20px;
+            padding: 30px 20px;
+        }
+
+        .reminder-content .reminder-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .reminder-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .reminder-time {
+            font-size: 18px;
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .reminder-task {
+            font-size: 20px;
+            margin-bottom: 24px;
+        }
+
+        /* Permission Modal */
+        .permission-content {
+            text-align: center;
+            border-radius: 20px;
+            margin: 20px;
+            padding: 30px 20px;
+        }
+
+        .permission-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .permission-content h2 {
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        .permission-content p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .permission-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Dark mode */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-color: #000000;
+                --card-background: #1c1c1e;
+                --text-primary: #ffffff;
+                --text-secondary: #8e8e93;
+                --text-tertiary: #48484a;
+                --border-color: #38383a;
+            }
+
+            .form-group input,
+            .form-group select {
+                background: #2c2c2e;
+            }
+
+            .btn-cancel {
+                background: #2c2c2e;
+            }
+
+            .modal-close {
+                background: #2c2c2e;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <header class="header">
+            <h1 class="header-title">明日计划</h1>
+            <button id="notificationBtn" class="notification-btn">🔔</button>
+        </header>
+
+        <div class="tab-container">
+            <button class="tab-btn active" data-tab="today">今天</button>
+            <button class="tab-btn" data-tab="tomorrow">明天</button>
+        </div>
+
+        <main class="task-container">
+            <div id="todayTasks" class="task-list active">
+                <div class="empty-state" id="todayEmpty">
+                    <span class="empty-icon">📋</span>
+                    <p>今天没有任务</p>
+                    <p class="empty-hint">昨晚添加的任务会显示在这里</p>
+                </div>
+            </div>
+            <div id="tomorrowTasks" class="task-list">
+                <div class="empty-state" id="tomorrowEmpty">
+                    <span class="empty-icon">🌙</span>
+                    <p>明天还没有计划</p>
+                    <p class="empty-hint">点击下方按钮添加任务</p>
+                </div>
+            </div>
+        </main>
+
+        <button id="addTaskBtn" class="add-task-btn">
+            <span>＋</span><span>添加任务</span>
+        </button>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addTaskModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>添加任务</h2>
+                <button class="modal-close" id="closeModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>任务内容</label>
+                    <input type="text" id="taskContent" placeholder="例如：学习英语 1小时" maxlength="100">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>时间</label>
+                        <input type="time" id="taskTime" value="09:00">
+                    </div>
+                    <div class="form-group">
+                        <label>提醒</label>
+                        <label class="switch">
+                            <input type="checkbox" id="taskReminder" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>日期</label>
+                    <select id="taskDate">
+                        <option value="today">今天</option>
+                        <option value="tomorrow" selected>明天</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" id="cancelTask">取消</button>
+                <button class="btn btn-primary" id="saveTask">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reminder Modal -->
+    <div id="reminderModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content reminder-content">
+            <div class="reminder-icon">⏰</div>
+            <h2 class="reminder-title">任务提醒</h2>
+            <p class="reminder-time" id="reminderTime"></p>
+            <p class="reminder-task" id="reminderTask"></p>
+            <button class="btn btn-primary" id="dismissReminder">知道了</button>
+        </div>
+    </div>
+
+    <!-- Permission Modal -->
+    <div id="permissionModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content permission-content">
+            <div class="permission-icon">🔔</div>
+            <h2>开启通知提醒</h2>
+            <p>开启通知后，您将在任务时间收到提醒</p>
+            <div class="permission-buttons">
+                <button class="btn btn-cancel" id="denyPermission">稍后再说</button>
+                <button class="btn btn-primary" id="allowPermission">开启通知</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Storage
+        const Storage = {
+            TASKS_KEY: 'tomorrow_reminder_tasks',
+            getTasks() {
+                try { return JSON.parse(localStorage.getItem(this.TASKS_KEY)) || []; }
+                catch { return []; }
+            },
+            saveTasks(tasks) { localStorage.setItem(this.TASKS_KEY, JSON.stringify(tasks)); },
+            addTask(task) {
+                const tasks = this.getTasks();
+                const newTask = {
+                    id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    content: task.content,
+                    time: task.time,
+                    date: task.date,
+                    hasReminder: task.hasReminder,
+                    completed: false,
+                    reminded: false
+                };
+                tasks.push(newTask);
+                this.saveTasks(tasks);
+                return newTask;
+            },
+            updateTask(id, updates) {
+                const tasks = this.getTasks();
+                const i = tasks.findIndex(t => t.id === id);
+                if (i !== -1) { tasks[i] = { ...tasks[i], ...updates }; this.saveTasks(tasks); }
+            },
+            deleteTask(id) {
+                this.saveTasks(this.getTasks().filter(t => t.id !== id));
+            },
+            getDateString(date) {
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            },
+            getTodayTasks() {
+                const today = this.getDateString(new Date());
+                return this.getTasks().filter(t => t.date === today).sort((a, b) => a.time.localeCompare(b.time));
+            },
+            getTomorrowTasks() {
+                const tomorrow = this.getDateString(new Date(Date.now() + 86400000));
+                return this.getTasks().filter(t => t.date === tomorrow).sort((a, b) => a.time.localeCompare(b.time));
+            }
+        };
+
+        // Notification Service
+        const NotificationService = {
+            permissionGranted: false,
+            async init() {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    this.permissionGranted = true;
+                }
+            },
+            async requestPermission() {
+                if (!('Notification' in window)) return false;
+                const p = await Notification.requestPermission();
+                this.permissionGranted = p === 'granted';
+                return this.permissionGranted;
+            },
+            sendNotification(title, options = {}) {
+                if (this.permissionGranted) {
+                    new Notification(title, { body: options.body || '', icon: '📋' });
+                }
+            },
+            checkReminders() {
+                const now = new Date();
+                const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                const today = Storage.getDateString(now);
+                Storage.getTasks().forEach(task => {
+                    if (task.date === today && task.hasReminder && task.time === currentTime && !task.reminded && !task.completed) {
+                        Storage.updateTask(task.id, { reminded: true });
+                        this.sendNotification('⏰ 任务提醒', { body: `${task.time} - ${task.content}` });
+                        App.showReminderModal(task);
+                    }
+                });
+            },
+            startCheck() {
+                this.checkReminders();
+                setInterval(() => this.checkReminders(), 30000);
+            }
+        };
+
+        // App
+        const App = {
+            currentTab: 'today',
+            async init() {
+                await NotificationService.init();
+                this.bindEvents();
+                this.renderTasks();
+                NotificationService.startCheck();
+                if (!NotificationService.permissionGranted && 'Notification' in window && Notification.permission === 'default') {
+                    setTimeout(() => document.getElementById('permissionModal').classList.add('active'), 2000);
+                }
+            },
+            bindEvents() {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.addEventListener('click', e => this.switchTab(e.target.dataset.tab));
+                });
+                document.getElementById('addTaskBtn').addEventListener('click', () => this.showAddModal());
+                document.getElementById('closeModal').addEventListener('click', () => this.hideAddModal());
+                document.getElementById('cancelTask').addEventListener('click', () => this.hideAddModal());
+                document.getElementById('saveTask').addEventListener('click', () => this.saveTask());
+                document.getElementById('dismissReminder').addEventListener('click', () => {
+                    document.getElementById('reminderModal').classList.remove('active');
+                });
+                document.getElementById('allowPermission').addEventListener('click', async () => {
+                    document.getElementById('permissionModal').classList.remove('active');
+                    await NotificationService.requestPermission();
+                });
+                document.getElementById('denyPermission').addEventListener('click', () => {
+                    document.getElementById('permissionModal').classList.remove('active');
+                });
+                document.querySelectorAll('.modal-overlay').forEach(o => {
+                    o.addEventListener('click', e => e.target.closest('.modal').classList.remove('active'));
+                });
+                document.getElementById('taskContent').addEventListener('keypress', e => {
+                    if (e.key === 'Enter') this.saveTask();
+                });
+            },
+            switchTab(tab) {
+                this.currentTab = tab;
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+                document.getElementById('todayTasks').classList.toggle('active', tab === 'today');
+                document.getElementById('tomorrowTasks').classList.toggle('active', tab === 'tomorrow');
+            },
+            renderTasks() {
+                this.renderList('todayTasks', 'todayEmpty', Storage.getTodayTasks(), true);
+                this.renderList('tomorrowTasks', 'tomorrowEmpty', Storage.getTomorrowTasks(), false);
+            },
+            renderList(containerId, emptyId, tasks, highlightCurrent) {
+                const container = document.getElementById(containerId);
+                const empty = document.getElementById(emptyId);
+                container.querySelectorAll('.task-item').forEach(el => el.remove());
+                if (tasks.length === 0) { empty.style.display = 'flex'; return; }
+                empty.style.display = 'none';
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                tasks.forEach(task => {
+                    const div = document.createElement('div');
+                    div.className = 'task-item';
+                    if (task.completed) div.classList.add('completed');
+                    if (highlightCurrent) {
+                        const [h, m] = task.time.split(':').map(Number);
+                        if (Math.abs(h * 60 + m - currentMinutes) <= 30 && !task.completed) div.classList.add('current');
+                    }
+                    div.innerHTML = `
+                        <div class="task-checkbox ${task.completed ? 'checked' : ''}" data-id="${task.id}"></div>
+                        <div class="task-info">
+                            <div class="task-time">${task.hasReminder ? '🔔' : '⏰'} ${task.time}</div>
+                            <div class="task-content">${this.escapeHtml(task.content)}</div>
+                        </div>
+                        <button class="task-delete" data-id="${task.id}">✕</button>
+                    `;
+                    div.querySelector('.task-checkbox').addEventListener('click', e => {
+                        const id = e.target.dataset.id;
+                        const t = Storage.getTasks().find(x => x.id === id);
+                        if (t) { Storage.updateTask(id, { completed: !t.completed }); this.renderTasks(); }
+                    });
+                    div.querySelector('.task-delete').addEventListener('click', e => {
+                        Storage.deleteTask(e.target.dataset.id);
+                        this.renderTasks();
+                    });
+                    container.appendChild(div);
+                });
+            },
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            },
+            showAddModal() {
+                document.getElementById('taskContent').value = '';
+                document.getElementById('taskTime').value = '09:00';
+                document.getElementById('taskReminder').checked = true;
+                document.getElementById('taskDate').value = this.currentTab === 'today' ? 'today' : 'tomorrow';
+                document.getElementById('addTaskModal').classList.add('active');
+                setTimeout(() => document.getElementById('taskContent').focus(), 300);
+            },
+            hideAddModal() {
+                document.getElementById('addTaskModal').classList.remove('active');
+            },
+            saveTask() {
+                const content = document.getElementById('taskContent').value.trim();
+                if (!content) {
+                    document.getElementById('taskContent').style.borderColor = '#ff3b30';
+                    setTimeout(() => document.getElementById('taskContent').style.borderColor = '', 1000);
+                    return;
+                }
+                const time = document.getElementById('taskTime').value;
+                const hasReminder = document.getElementById('taskReminder').checked;
+                const dateOption = document.getElementById('taskDate').value;
+                const now = new Date();
+                const taskDate = dateOption === 'today' ? Storage.getDateString(now) : Storage.getDateString(new Date(now.getTime() + 86400000));
+                Storage.addTask({ content, time, date: taskDate, hasReminder });
+                this.hideAddModal();
+                this.renderTasks();
+                this.switchTab(dateOption);
+            },
+            showReminderModal(task) {
+                document.getElementById('reminderTime').textContent = task.time;
+                document.getElementById('reminderTask').textContent = task.content;
+                document.getElementById('reminderModal').classList.add('active');
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => App.init());
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) { App.renderTasks(); NotificationService.checkReminders(); }
+        });
+    </script>
+</body>
+
+</html>
