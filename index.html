@@ -212,6 +212,7 @@
         .task-info {
             flex: 1;
             min-width: 0;
+            cursor: pointer;
         }
 
         .task-time {
@@ -434,6 +435,11 @@
             cursor: pointer;
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .btn-cancel {
             background: var(--background-color);
             color: var(--text-primary);
@@ -640,7 +646,15 @@
                 try { return JSON.parse(localStorage.getItem(this.TASKS_KEY)) || []; }
                 catch { return []; }
             },
-            saveTasks(tasks) { localStorage.setItem(this.TASKS_KEY, JSON.stringify(tasks)); },
+            saveTasks(tasks) {
+                try {
+                    localStorage.setItem(this.TASKS_KEY, JSON.stringify(tasks));
+                } catch (e) {
+                    console.error("Save failed:", e);
+                    alert("⚠️保存失败：\n如果是手机空间不足，请清理空间。\n如果是私密模式，请尝试普通模式。");
+                    throw e; // Re-throw to stop execution
+                }
+            },
             addTask(task) {
                 const tasks = this.getTasks();
                 const newTask = {
@@ -717,13 +731,19 @@
         // App
         const App = {
             currentTab: 'today',
+            editingId: null,
+
             async init() {
-                await NotificationService.init();
-                this.bindEvents();
-                this.renderTasks();
-                NotificationService.startCheck();
-                if (!NotificationService.permissionGranted && 'Notification' in window && Notification.permission === 'default') {
-                    setTimeout(() => document.getElementById('permissionModal').classList.add('active'), 2000);
+                try {
+                    await NotificationService.init();
+                    this.bindEvents();
+                    this.renderTasks();
+                    NotificationService.startCheck();
+                    if (!NotificationService.permissionGranted && 'Notification' in window && Notification.permission === 'default') {
+                        setTimeout(() => document.getElementById('permissionModal').classList.add('active'), 2000);
+                    }
+                } catch (e) {
+                    console.error("App init error:", e);
                 }
             },
             bindEvents() {
@@ -732,7 +752,6 @@
                 });
                 document.getElementById('addTaskBtn').addEventListener('click', () => this.showAddModal());
 
-                // 修复：添加通知按钮点击事件
                 document.getElementById('notificationBtn').addEventListener('click', () => {
                     if (!('Notification' in window)) {
                         alert('您的设备不支持通知，或者未添加到主屏幕');
@@ -749,8 +768,8 @@
                     document.getElementById('permissionModal').classList.add('active');
                 });
 
-                document.getElementById('closeModal').addEventListener('click', () => this.hideAddModal());
-                document.getElementById('cancelTask').addEventListener('click', () => this.hideAddModal());
+                document.getElementById('closeModal').addEventListener('click', () => this.hideModal());
+                document.getElementById('cancelTask').addEventListener('click', () => this.hideModal());
                 document.getElementById('saveTask').addEventListener('click', () => this.saveTask());
                 document.getElementById('dismissReminder').addEventListener('click', () => {
                     document.getElementById('reminderModal').classList.remove('active');
@@ -776,8 +795,10 @@
                 document.getElementById('tomorrowTasks').classList.toggle('active', tab === 'tomorrow');
             },
             renderTasks() {
-                this.renderList('todayTasks', 'todayEmpty', Storage.getTodayTasks(), true);
-                this.renderList('tomorrowTasks', 'tomorrowEmpty', Storage.getTomorrowTasks(), false);
+                try {
+                    this.renderList('todayTasks', 'todayEmpty', Storage.getTodayTasks(), true);
+                    this.renderList('tomorrowTasks', 'tomorrowEmpty', Storage.getTomorrowTasks(), false);
+                } catch (e) { console.error(e); }
             },
             renderList(containerId, emptyId, tasks, highlightCurrent) {
                 const container = document.getElementById(containerId);
@@ -797,18 +818,29 @@
                     }
                     div.innerHTML = `
                         <div class="task-checkbox ${task.completed ? 'checked' : ''}" data-id="${task.id}"></div>
-                        <div class="task-info">
+                        <div class="task-info" data-id="${task.id}">
                             <div class="task-time">${task.hasReminder ? '🔔' : '⏰'} ${task.time}</div>
                             <div class="task-content">${this.escapeHtml(task.content)}</div>
                         </div>
                         <button class="task-delete" data-id="${task.id}">✕</button>
                     `;
+
                     div.querySelector('.task-checkbox').addEventListener('click', e => {
+                        e.stopPropagation();
                         const id = e.target.dataset.id;
                         const t = Storage.getTasks().find(x => x.id === id);
                         if (t) { Storage.updateTask(id, { completed: !t.completed }); this.renderTasks(); }
                     });
+
+                    div.querySelector('.task-info').addEventListener('click', e => {
+                        const id = e.currentTarget.dataset.id;
+                        const t = Storage.getTasks().find(x => x.id === id);
+                        if (t) this.showEditModal(t);
+                    });
+
                     div.querySelector('.task-delete').addEventListener('click', e => {
+                        e.stopPropagation();
+                        // Delete confirms are annoying if accidentally clicked, but safer
                         Storage.deleteTask(e.target.dataset.id);
                         this.renderTasks();
                     });
@@ -821,6 +853,12 @@
                 return div.innerHTML;
             },
             showAddModal() {
+                this.editingId = null;
+                document.querySelector('#addTaskModal h2').textContent = '添加任务';
+                const btn = document.getElementById('saveTask');
+                btn.textContent = '添加';
+                btn.disabled = false;
+
                 document.getElementById('taskContent').value = '';
                 document.getElementById('taskTime').value = '09:00';
                 document.getElementById('taskReminder').checked = true;
@@ -828,25 +866,65 @@
                 document.getElementById('addTaskModal').classList.add('active');
                 setTimeout(() => document.getElementById('taskContent').focus(), 300);
             },
-            hideAddModal() {
+            showEditModal(task) {
+                this.editingId = task.id;
+                document.querySelector('#addTaskModal h2').textContent = '编辑任务';
+                const btn = document.getElementById('saveTask');
+                btn.textContent = '保存修改';
+                btn.disabled = false;
+
+                document.getElementById('taskContent').value = task.content;
+                document.getElementById('taskTime').value = task.time;
+                document.getElementById('taskReminder').checked = task.hasReminder;
+
+                const now = new Date();
+                const todayStr = Storage.getDateString(now);
+                document.getElementById('taskDate').value = (task.date === todayStr) ? 'today' : 'tomorrow';
+
+                document.getElementById('addTaskModal').classList.add('active');
+            },
+            hideModal() {
                 document.getElementById('addTaskModal').classList.remove('active');
+                this.editingId = null;
             },
             saveTask() {
-                const content = document.getElementById('taskContent').value.trim();
-                if (!content) {
-                    document.getElementById('taskContent').style.borderColor = '#ff3b30';
-                    setTimeout(() => document.getElementById('taskContent').style.borderColor = '', 1000);
-                    return;
+                const btn = document.getElementById('saveTask');
+                if (btn.disabled) return;
+
+                try {
+                    const content = document.getElementById('taskContent').value.trim();
+                    if (!content) {
+                        document.getElementById('taskContent').style.borderColor = '#ff3b30';
+                        setTimeout(() => document.getElementById('taskContent').style.borderColor = '', 1000);
+                        return;
+                    }
+
+                    // Loading State
+                    btn.disabled = true;
+                    btn.textContent = '保存中...';
+
+                    const time = document.getElementById('taskTime').value;
+                    const hasReminder = document.getElementById('taskReminder').checked;
+                    const dateOption = document.getElementById('taskDate').value;
+                    const now = new Date();
+                    const taskDate = dateOption === 'today' ? Storage.getDateString(now) : Storage.getDateString(new Date(now.getTime() + 86400000));
+
+                    if (this.editingId) {
+                        Storage.updateTask(this.editingId, { content, time, date: taskDate, hasReminder });
+                    } else {
+                        Storage.addTask({ content, time, date: taskDate, hasReminder });
+                    }
+
+                    this.hideModal();
+                    this.renderTasks();
+                    this.switchTab(dateOption);
+                } catch (error) {
+                    console.error("Save error:", error);
+                    alert("操作失败：" + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = this.editingId ? '保存修改' : '添加';
                 }
-                const time = document.getElementById('taskTime').value;
-                const hasReminder = document.getElementById('taskReminder').checked;
-                const dateOption = document.getElementById('taskDate').value;
-                const now = new Date();
-                const taskDate = dateOption === 'today' ? Storage.getDateString(now) : Storage.getDateString(new Date(now.getTime() + 86400000));
-                Storage.addTask({ content, time, date: taskDate, hasReminder });
-                this.hideAddModal();
-                this.renderTasks();
-                this.switchTab(dateOption);
             },
             showReminderModal(task) {
                 document.getElementById('reminderTime').textContent = task.time;
